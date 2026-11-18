@@ -1,28 +1,16 @@
 // FastAPI 백엔드 호출. 같은 도메인에서 서비스하면 VITE_API_BASE는 비워 둔다.
 const BASE = (import.meta.env?.VITE_API_BASE || '').replace(/\/$/, '');
-const TOKEN_KEY = 'TT_MEMSCM_TOKEN';
-
-export const getToken = () => {
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
-};
-export const setToken = (token) => {
-  try { token ? localStorage.setItem(TOKEN_KEY, token) : localStorage.removeItem(TOKEN_KEY); } catch { /* 저장소를 쓸 수 없는 환경 */ }
-};
 
 export class ApiError extends Error {
   constructor(message, status) { super(message); this.status = status; }
 }
 
 async function request(method, path, body) {
-  const token = getToken();
   let res;
   try {
     res = await fetch(`${BASE}/api${path}`, {
       method,
-      headers: {
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
@@ -39,7 +27,6 @@ async function request(method, path, body) {
 }
 
 export const api = {
-  login: (username, password) => request('POST', '/auth/login', { username, password }),
   state: () => request('GET', '/state'),
   mails: () => request('GET', '/mails'),
   reset: () => request('POST', '/reset'),

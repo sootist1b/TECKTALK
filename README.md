@@ -14,7 +14,6 @@ frontend/            React 앱 (Vite)
 backend/
   app/main.py        FastAPI 라우트 + 빌드된 React 앱 제공
   app/store.py       SQLite 저장소와 업무 규칙(검증, 시드 데이터)
-  app/auth.py        데모 로그인 토큰(HMAC 서명)
 prototype/           원본 단일 HTML 시제품
 Dockerfile           React 빌드 → FastAPI 이미지 (서비스 1개로 배포)
 render.yaml          Render 배포 설정
@@ -35,7 +34,7 @@ npm install
 npm run dev
 ```
 
-데모 계정은 `demo / demo`입니다. 데이터는 `backend/data/memscm.db`(SQLite)에 저장됩니다.
+로그인 없이 바로 열립니다. 데이터는 `backend/data/memscm.db`(SQLite)에 저장됩니다.
 
 Docker 하나로 실행하려면:
 
@@ -50,7 +49,7 @@ docker run -p 8000:8000 memscm      # http://localhost:8000
 
 1. 위 버튼을 누르고 Render에 GitHub 계정으로 로그인합니다.
 2. `render.yaml` 설정이 그대로 뜨면 **Apply**를 누릅니다.
-3. 빌드가 끝나면 `https://techtalk-memscm.onrender.com` 같은 주소가 생깁니다.
+3. 빌드가 끝나면 주소가 생깁니다. 현재 배포: https://techtalk-memscm.onrender.com/
 
 이후 `main` 브랜치에 푸시하면 자동으로 다시 배포됩니다.
 
@@ -62,8 +61,6 @@ docker run -p 8000:8000 memscm      # http://localhost:8000
 
 | 이름 | 기본값 | 설명 |
 |---|---|---|
-| `SECRET_KEY` | 실행 때마다 무작위 | 로그인 토큰 서명 키. 배포 시 고정값 권장(Render가 자동 생성) |
-| `DEMO_USER` / `DEMO_PASSWORD` | `demo` / `demo` | 로그인 계정 |
 | `DATABASE_PATH` | `backend/data/memscm.db` | SQLite 파일 위치 |
 | `TZ_OFFSET_HOURS` | `9` | 시드 데이터·메일 등록 시 '오늘' 기준 시간대 |
 | `ALLOWED_ORIGINS` | (없음) | 프론트를 다른 도메인에 따로 올릴 때 CORS 허용 목록(쉼표 구분) |
@@ -71,11 +68,10 @@ docker run -p 8000:8000 memscm      # http://localhost:8000
 
 ## API 요약
 
-로그인 외 모든 요청은 `Authorization: Bearer <token>`이 필요합니다. 변경 요청은 갱신된 전체 상태 `{ "state": {...} }`를 돌려줍니다.
+로그인(인증) 없이 누구나 호출할 수 있습니다. 주소를 아는 사람은 누구나 데이터를 보고 고칠 수 있으니 공개 범위에 주의하세요. 변경 요청은 갱신된 전체 상태 `{ "state": {...} }`를 돌려줍니다.
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/api/auth/login` | 로그인 → `{token}` |
 | GET | `/api/state` | 모듈 + 대과제/소과제/추가 일정 전체 |
 | GET | `/api/mails` | 샘플 메일 |
 | POST | `/api/reset` | 데모 데이터 초기화 |

@@ -8,11 +8,5 @@ services:
     healthCheckPath: /api/health
     autoDeploy: true
     envVars:
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DEMO_USER
-        value: demo
-      - key: DEMO_PASSWORD
-        value: demo
       - key: TZ_OFFSET_HOURS
         value: "9"

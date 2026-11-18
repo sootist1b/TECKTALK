@@ -21,12 +21,9 @@ jobs:
         run: |
           for i in $(seq 1 30); do curl -sf http://localhost:8000/api/health && break; sleep 1; done
           curl -sf http://localhost:8000/ | grep -q '<div id="root">'
-          TOKEN=$(curl -sf -X POST http://localhost:8000/api/auth/login \
-            -H 'Content-Type: application/json' -d '{"username":"demo","password":"demo"}' \
-            | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
-          curl -sf http://localhost:8000/api/state -H "Authorization: Bearer $TOKEN" \
+          curl -sf http://localhost:8000/api/state \
             | python3 -c 'import sys,json;s=json.load(sys.stdin)["state"];assert len(s["projects"])==3;print("projects ok")'
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/state)" = "401"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/api/auth/login -X POST)" != "200"
 
       - name: Container logs
         if: always()

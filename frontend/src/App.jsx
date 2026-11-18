@@ -1,36 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, getToken, setToken } from './api.js';
+import { api } from './api.js';
 import { COLORS, pad, todayIso } from './utils.js';
 import Gantt from './components/Gantt.jsx';
 import Matrix from './components/Matrix.jsx';
 import RightPanel from './components/RightPanel.jsx';
-
-function Login({ onLogin, busy }) {
-  const [id, setId] = useState('demo');
-  const [pw, setPw] = useState('demo');
-  const submit = () => onLogin(id.trim(), pw);
-  return (
-    <div className="login" id="login">
-      <div className="login-card">
-        <div className="mark">T</div>
-        <div className="eyebrow" style={{ marginTop: 24 }}>WORK MANAGEMENT SYSTEM</div>
-        <h1>TECHTALK_MEMSCM</h1>
-        <p className="section-subtext">일정과 업무를 하나의 캔버스에서 관리하세요.</p>
-        <label htmlFor="loginId" style={{ fontSize: 12, fontWeight: 700 }}>아이디</label>
-        <input id="loginId" className="input" value={id} autoComplete="username" onChange={(e) => setId(e.target.value)} />
-        <label htmlFor="loginPassword" style={{ fontSize: 12, fontWeight: 700, display: 'block', marginTop: 15 }}>비밀번호</label>
-        <input
-          id="loginPassword" className="input" type="password" value={pw} autoComplete="current-password"
-          onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-        />
-        <button className="btn primary wide" type="button" disabled={busy} onClick={submit}>
-          워크스페이스 열기 <span aria-hidden="true">→</span>
-        </button>
-        <p className="muted small" style={{ marginTop: 22 }}>데모 계정: <b>demo / demo</b><br />데모용 계정이며 서버(FastAPI)에서 확인합니다.</p>
-      </div>
-    </div>
-  );
-}
 
 function Modal({ modal, onClose }) {
   if (!modal) return null;
@@ -50,8 +23,8 @@ function Modal({ modal, onClose }) {
 
 export default function App() {
   const now = new Date();
-  const [authed, setAuthed] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [store, setStore] = useState({ modules: [], projects: [] });
   const [mails, setMails] = useState([]);
   const [year, setYear] = useState(now.getFullYear());
@@ -64,7 +37,7 @@ export default function App() {
   const [openProject, setOpenProject] = useState(null);
   const [mode, setMode] = useState('detail');
   const [panelOpen, setPanelOpen] = useState(true);
-  const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [sidebarCompact, setSidebarCompact] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('sectionGantt');
@@ -80,13 +53,6 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   }, []);
 
-  const logout = useCallback((message) => {
-    setToken(null);
-    setAuthed(false);
-    setSettingsOpen(false);
-    if (message) notify(message);
-  }, [notify]);
-
   /** API 호출 → 응답의 전체 상태로 교체. 실패하면 메시지를 띄우고 null을 돌려준다. */
   const run = useCallback(async (call, okMessage) => {
     try {
@@ -95,42 +61,25 @@ export default function App() {
       if (okMessage) notify(okMessage);
       return res;
     } catch (e) {
-      if (e.status === 401) logout('로그인이 만료되었습니다. 다시 로그인하세요.');
-      else notify(e.message);
+      notify(e.message);
       return null;
     }
-  }, [notify, logout]);
+  }, [notify]);
 
-  const enterWorkspace = useCallback(async () => {
-    const [s, m] = await Promise.all([api.state(), api.mails()]);
-    setStore(s.state);
-    setMails(m.mails);
-    setOpenProject(null);
-    setSelectedProject(null);
-    setSelectedTask(null);
-    setAuthed(true);
-    setSidebarCompact(panelOpen);
-  }, [panelOpen]);
-
-  // 저장된 토큰이 유효하면 로그인 화면을 건너뛴다.
-  useEffect(() => {
-    if (!getToken()) return;
-    enterWorkspace().catch(() => setToken(null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // 첫 화면에서 바로 데이터를 불러온다. (로그인 없음)
+  const load = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const [s, m] = await Promise.all([api.state(), api.mails()]);
+      setStore(s.state);
+      setMails(m.mails);
+      setLoaded(true);
+    } catch (e) {
+      setLoadError(e.message);
+    }
   }, []);
 
-  const login = async (id, pw) => {
-    setBusy(true);
-    try {
-      const res = await api.login(id, pw);
-      setToken(res.token);
-      await enterWorkspace();
-    } catch (e) {
-      notify(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  useEffect(() => { load(); }, [load]);
 
   // ------------------------------------------------------------ 레이아웃
   const showPanel = (m) => { setMode(m); setPanelOpen(true); setSidebarCompact(true); };
@@ -157,7 +106,7 @@ export default function App() {
   }, [settingsOpen, pickerOpen]);
 
   useEffect(() => {
-    if (!authed) return undefined;
+    if (!loaded) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape') { setSettingsOpen(false); setPickerOpen(false); return; }
       if (e.altKey && ['ArrowLeft', 'ArrowRight'].includes(e.key) && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
@@ -167,7 +116,7 @@ export default function App() {
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [authed]);
+  }, [loaded]);
 
   // ------------------------------------------------------------ 필터 / 월 이동
   const visibleProjects = useMemo(
@@ -269,8 +218,6 @@ export default function App() {
     });
   };
 
-  const confirmLogout = () => setModal({ title: '로그아웃', description: '데모 워크스페이스에서 로그아웃할까요?', onYes: () => logout() });
-
   // ------------------------------------------------------------ 매트릭스 필터
   const resetMatrixView = () => { setOwner('all'); setModuleSelection([]); };
   const matrixOwner = (who) => setOwner((cur) => (cur === who ? 'all' : who));
@@ -282,7 +229,25 @@ export default function App() {
 
   // ------------------------------------------------------------ 렌더
   const toastNode = toast ? <div className="toast">{toast}</div> : null;
-  if (!authed) return <>{<Login onLogin={login} busy={busy} />}{toastNode}</>;
+  if (!loaded) {
+    return (
+      <div className="login">
+        <div className="login-card">
+          <div className="mark">T</div>
+          <div className="eyebrow" style={{ marginTop: 24 }}>WORK MANAGEMENT SYSTEM</div>
+          <h1>TECHTALK_MEMSCM</h1>
+          {loadError ? (
+            <>
+              <p className="section-subtext">{loadError}</p>
+              <button className="btn primary wide" type="button" onClick={load}>다시 시도</button>
+            </>
+          ) : (
+            <p className="section-subtext">워크스페이스를 불러오는 중입니다… (서버가 잠들어 있으면 최대 1분 걸릴 수 있습니다)</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const taskCount = visibleProjects.reduce((n, p) => n + p.tasks.length, 0);
 
@@ -344,7 +309,6 @@ export default function App() {
                 <button type="button" className="btn tool-link icon-only" title="패널 열기/닫기" aria-label="패널 열기/닫기" onClick={togglePanel}>◧</button>
                 <span className="tool-separator" />
                 <button type="button" className="btn tool-link icon-only" title="설정" aria-label="설정" onClick={() => setSettingsOpen((v) => !v)}>⚙</button>
-                <button type="button" className="btn tool-link icon-only" title="로그아웃" aria-label="로그아웃" onClick={confirmLogout}>⇥</button>
               </div>
             </header>
 
@@ -486,7 +450,6 @@ export default function App() {
           <div className="micro upper muted" style={{ padding: '7px 12px', fontWeight: 800 }}>Preferences</div>
           <button type="button" onClick={addModule}>＋ 모듈 추가</button>
           <button type="button" onClick={resetDemo}>↺ 데모 데이터 초기화</button>
-          <button type="button" onClick={() => { setSettingsOpen(false); notify('로그인 방법과 SSO 설정은 정식 서버 구현 단계에서 연결합니다.'); }}>⚙ 계정 및 보안 (준비 중)</button>
         </div>
       ) : null}
       <Modal modal={modal} onClose={() => setModal(null)} />
