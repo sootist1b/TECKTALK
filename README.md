@@ -66,6 +66,18 @@ docker run -p 8000:8000 memscm      # http://localhost:8000
 | `ALLOWED_ORIGINS` | (없음) | 프론트를 다른 도메인에 따로 올릴 때 CORS 허용 목록(쉼표 구분) |
 | `VITE_API_BASE` | (없음) | 프론트 빌드 시 API 주소. 같은 도메인이면 비워 둠 |
 
+## 온라인 배포 (Vercel)
+
+`vercel.json`과 `pyproject.toml`이 들어 있어서 레포를 Vercel에 가져오기만 하면 됩니다.
+
+1. https://vercel.com/new 에서 GitHub로 로그인하고 이 레포를 **Import** 합니다.
+2. 설정은 건드리지 않고 **Deploy**를 누릅니다. (Framework Preset은 FastAPI로 자동 인식)
+3. 빌드 과정: `frontend`를 빌드해 `public/`에 넣고 → CDN이 화면을 제공, `/api/*`는 FastAPI 함수가 처리합니다.
+
+> Vercel 주의: 서버리스라서 SQLite가 `/tmp`에 만들어집니다. 함수 인스턴스가 새로 뜨거나 재배포하면
+> 데이터가 시드 상태로 돌아가고, 동시에 여러 인스턴스가 뜨면 서로 데이터가 다를 수 있습니다.
+> 데이터를 유지하려면 Vercel Marketplace의 Postgres(Neon 등)로 옮겨야 합니다.
+
 ## API 요약
 
 로그인(인증) 없이 누구나 호출할 수 있습니다. 주소를 아는 사람은 누구나 데이터를 보고 고칠 수 있으니 공개 범위에 주의하세요. 변경 요청은 갱신된 전체 상태 `{ "state": {...} }`를 돌려줍니다.

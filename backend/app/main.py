@@ -19,7 +19,9 @@ from pydantic import BaseModel, Field
 from .store import Store, StoreError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = os.environ.get("DATABASE_PATH", str(BASE_DIR / "data" / "memscm.db"))
+# Vercel 함수는 /tmp만 쓸 수 있다. (인스턴스가 바뀌면 데이터가 초기화된다.)
+_DEFAULT_DB = "/tmp/memscm.db" if os.environ.get("VERCEL") else str(BASE_DIR / "data" / "memscm.db")
+DB_PATH = os.environ.get("DATABASE_PATH", _DEFAULT_DB)
 STATIC_DIR = Path(os.environ.get("STATIC_DIR", str(BASE_DIR / "static")))
 
 store = Store(DB_PATH)

@@ -7,3 +7,7 @@ backend/data/
 backend/static/
 .env
 .DS_Store
+
+# Vercel
+public/
+.vercel/

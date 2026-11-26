@@ -1,0 +1,13 @@
+# Vercel 배포용 설정. (Render/Docker 배포는 backend/requirements.txt와 Dockerfile을 그대로 쓴다.)
+[project]
+name = "techtalk-memscm"
+version = "2.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "pydantic==2.10.4",
+]
+
+# Vercel이 backend/app/main.py의 FastAPI 인스턴스 app을 함수로 실행한다.
+[tool.vercel]
+entrypoint = "backend.app.main:app"
